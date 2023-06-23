@@ -9,32 +9,18 @@ terraform {
   }
 }
 
-# VARIABLES
-
-
 # SYSADMIN CONNECTION
 
 provider "snowflake" {
   account  = "ig29163" # the Snowflake account identifier
   username = "tf-snow"
   password = "PhFZ#ZRBjfnGKA2"
-  role     = "SYSADMIN"
-}
-
-# SECURITYADMIN CONNECTION
-
-provider "snowflake" {
-  alias = "security_admin"
-  account  = "ig29163" # the Snowflake account identifier
-  username = "tf-snow"
-  password = "PhFZ#ZRBjfnGKA2"
-  role  = "SECURITYADMIN"
+  role     = "ACCOUNTADMIN"
 }
 
 # ROLE CREATION
 
 resource "snowflake_role" "role" {
-  provider = snowflake.security_admin
   name     = "tf_role_${var.domain}_${var.env}"
 }
 
@@ -46,7 +32,6 @@ resource "snowflake_database" "db" {
 }
 
 resource "snowflake_database_grant" "grant" {
-  provider          = snowflake.security_admin
   database_name     = snowflake_database.db.name
   privilege         = "USAGE"
   roles             = [snowflake_role.role.name]
@@ -63,7 +48,6 @@ resource "snowflake_schema" "schema" {
 }
 
 resource "snowflake_schema_grant" "grant" {
-  provider          = snowflake.security_admin
   database_name     = snowflake_database.db.name
   schema_name       = snowflake_schema.schema.name
   privilege         = "USAGE"
@@ -86,7 +70,6 @@ resource "snowflake_warehouse" "warehouse" {
 }
 
 resource "snowflake_warehouse_grant" "grant" {
-  provider          = snowflake.security_admin
   enable_multiple_grants = true
   warehouse_name    = snowflake_warehouse.warehouse.name
   privilege         = "MODIFY"
@@ -97,7 +80,6 @@ resource "snowflake_warehouse_grant" "grant" {
 # USER CREATION
 
 resource "snowflake_user" "user" {
-  provider          = snowflake.security_admin
   name              = "tf_user_${var.domain}_${var.env}"
   default_warehouse = snowflake_warehouse.warehouse.name
   default_role      = snowflake_role.role.name
@@ -109,7 +91,6 @@ resource "snowflake_user" "user" {
 # ROLE GRANTED TO USER
 
 resource "snowflake_role_grants" "grants" {
-  provider  = snowflake.security_admin
   role_name = snowflake_role.role.name
   users     = [snowflake_user.user.name]
 }
