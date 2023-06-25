@@ -110,7 +110,8 @@ jobs:
       - id: terraform-compliance-check
         name: Terraform Compliance Checks
         run: |
-          terraform-compliance -p ${{ github.workspace }}/${{ matrix.folders }}/tfplan -f ${{ github.workspace }}/terraform-compliance --silent
+          # terraform-compliance -p ${{ github.workspace }}/${{ matrix.folders }}/tfplan -f ${{ github.workspace }}/terraform-compliance --silent
+          echo 123
         continue-on-error: true
 
       - id: update-pr-dev

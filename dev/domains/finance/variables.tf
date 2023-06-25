@@ -12,8 +12,4 @@ variable "sf_username" {
 variable "sf_password" {
   type        = string
   description = "Snowflake user password"
-
-
-
-
 }
