@@ -5,6 +5,10 @@ on:
     paths:
       - "prod/**"
 
+env:
+  TF_VAR_sf_username: ${{ secrets.tf_var_sf_username }}
+  TF_VAR_sf_password: ${{ secrets.tf_var_sf_password }}
+
 jobs:
   changed-directories:
     runs-on: ubuntu-latest
