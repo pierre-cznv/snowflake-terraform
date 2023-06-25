@@ -7,16 +7,4 @@ module "domain_initial_setup" {
   sf_account  = var.sf_account # the Snowflake account identifier
   sf_username = var.sf_username
   sf_password = var.sf_password
-
-  tags = {
-    Name        = "test"
-    Environment = "test",
-    Team        = "test",
-    Tribe       = "tribe-global-platform",
-    Managed-by  = "test",
-    GDPR        = false,
-    Public      = false,
-    PCI         = false
-  }
-
 }
