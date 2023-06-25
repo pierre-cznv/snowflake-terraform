@@ -1,7 +1,7 @@
 variable "sf_account" {
   type        = string
   description = "Snowflake account ID + region"
-  default = "ig29163.eu-west-1"
+  default     = "ig29163.eu-west-1"
 }
 
 variable "sf_username" {
