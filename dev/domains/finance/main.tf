@@ -1,5 +1,5 @@
 module "domain_initial_setup" {
-  source = "../..//modules/initial"
+  source = "../../..//modules/initial"
 
   env    = "DEV"
   domain = "FINANCE"
