@@ -1,0 +1,153 @@
+name: pr-check-dev
+
+on:
+  pull_request:
+    paths:
+      - "dev/**"
+
+jobs:
+  changed-directories:
+    runs-on: ubuntu-latest
+    outputs:
+      folders: ${{ steps.build-json-from-array.outputs.build }}
+    steps:
+    - id: filter-unique-files
+      name: Get Changed Files
+      uses: dorny/paths-filter@v2
+      with:
+        list-files: shell
+        filters: |
+          changed:
+            - 'dev/**'
+
+    - id: get-unique-folders
+      name: Get Changed Folders
+      if: ${{ steps.filter-unique-files.outputs.changed == 'true' }}
+      run: |
+        for i in ${{ steps.filter-unique-files.outputs.changed_files }}
+        do
+          directories+=($(dirname $i))
+        done
+        
+        sorted_unique_ids=($(echo "${directories[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
+        echo "changed_folders=${sorted_unique_ids[@]}" >> $GITHUB_OUTPUT
+
+    - id: build-json-from-array
+      name: Build JSON output
+      if: ${{ steps.filter-unique-files.outputs.changed == 'true' }}
+      uses: kanga333/json-array-builder@v0.1.0
+      with:
+        str: ${{ steps.get-unique-folders.outputs.changed_folders }}
+        separator: space
+
+  run-terraform:
+    needs: changed-directories
+    strategy:
+      fail-fast: false
+      matrix:
+        folders: ${{ fromJSON(needs.changed-directories.outputs.folders) }}
+    if: ${{ needs.changed-directories.outputs.folders }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ matrix.folders }}
+    steps:
+      - id: checkout-repo
+        name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - id: install-node
+        name: Install Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: 16
+
+      - id: configure-aws-credentials
+        name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-region: eu-west-1
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          role-duration-seconds: 3600
+
+      - id: setup-terraform
+        name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+
+      - id: setup-terraform-compliance
+        name: Setup terraform-compliance
+        uses: terraform-compliance/github_action@0.3.0
+
+      - id: terraform-fmt
+        name: Terraform Format
+        run: terraform fmt -check
+        continue-on-error: true
+
+      - id: terraform-init
+        name: Terraform Init
+        run: terraform init
+        continue-on-error: true
+
+      - id: terraform-validate
+        name: Terraform Validate
+        run: terraform validate -no-color
+        continue-on-error: true
+
+      - id: terraform-plan
+        name: Terraform Plan
+        run: terraform plan -no-color -lock=false -out=${{ github.workspace }}/${{ matrix.folders }}/tfplan
+        continue-on-error: true
+
+      - id: terraform-compliance-check
+        name: Terraform Compliance Checks
+        run: |
+          terraform-compliance -p ${{ github.workspace }}/${{ matrix.folders }}/tfplan -f ${{ github.workspace }}/terraform-compliance --silent
+        continue-on-error: true
+
+      - id: update-pr-dev
+        name: Update Pull Request (Dev)
+        uses: actions/github-script@v6
+        if: github.event_name == 'pull_request'
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const output = `#### AWS Account: sumup-data-dev (395533948345)
+            
+            #### 1. Format and Style 🖌: \`${{ steps.terraform-fmt.outcome }}\`
+            #### 2. Initialization ⚙️: \`${{ steps.terraform-init.outcome }}\`
+            #### 3. Validation 🤖: \`${{ steps.terraform-validate.outcome }}\`
+            #### 4. Terraform Plan 📖: \`${{ steps.terraform-plan.outcome }}\`
+            #### 5. Compliance Checks 🛡️: \`${{ steps.terraform-compliance-check.outcome }}\`
+
+            *Pushed by: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            })
+
+      - id: status-check
+        name: Status Check
+        if: |
+          steps.terraform-fmt.outcome == 'failure' ||
+          steps.terraform-validate.outcome == 'failure' ||
+          steps.terraform-plan.outcome == 'failure' ||
+          steps.terraform-compliance-check.outcome == 'failure'
+        run: exit 1
+
+  workflow-check:
+    needs:
+      - changed-directories
+      - run-terraform
+    runs-on: ubuntu-latest
+    steps:
+      - id: check-success
+        name: Check for Successful Job Runs
+        uses: re-actors/alls-green@v1.1.0
+        with:
+          jobs: ${{ toJSON(needs) }}
+          allowed-skips: changed-directories, run-terraform
+

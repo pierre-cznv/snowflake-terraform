@@ -1,34 +1,14 @@
-# PROVIDER SETUP
-
-terraform {
-  required_providers {
-    snowflake = {
-      source  = "Snowflake-Labs/snowflake"
-      version = "0.59.0"
-    }
-  }
-}
-
-# SYSADMIN CONNECTION
-
-provider "snowflake" {
-  account  = "ig29163" # the Snowflake account identifier
-  username = "tf-snow"
-  password = "PhFZ#ZRBjfnGKA2"
-  role     = "ACCOUNTADMIN"
-}
-
 # ROLE CREATION
 
 resource "snowflake_role" "role" {
-  name     = "tf_role_${var.domain}_${var.env}"
+  name     = "TF_ROLE_${var.domain}_${var.env}"
 }
 
 
 # DATABASE CREATION AND GRANT
 
 resource "snowflake_database" "db" {
-  name     = "tf_database_${var.domain}_${var.env}"
+  name     = "TF_DATABASE_${var.domain}_${var.env}"
 }
 
 resource "snowflake_database_grant" "grant" {
@@ -43,7 +23,7 @@ resource "snowflake_database_grant" "grant" {
 
 resource "snowflake_schema" "schema" {
   database   = snowflake_database.db.name
-  name       = "tf_schema_${var.domain}_${var.env}"
+  name       = "TF_SCHEMA_${var.domain}_${var.env}"
   is_managed = false
 }
 
@@ -59,7 +39,7 @@ resource "snowflake_schema_grant" "grant" {
 # WAREHOUSE CREATION AND GRANT
 
 resource "snowflake_warehouse" "warehouse" {
-  name           = "tf_warehouse_${var.domain}_${var.env}"
+  name           = "TF_WAREHOUSE_${var.domain}_${var.env}"
   warehouse_size = "x-small"
   auto_suspend = 30
   statement_timeout_in_seconds = 120
@@ -80,12 +60,12 @@ resource "snowflake_warehouse_grant" "grant" {
 # USER CREATION
 
 resource "snowflake_user" "user" {
-  name              = "tf_user_${var.domain}_${var.env}"
+  name              = "TF_USER_${var.domain}_${var.env}"
   default_warehouse = snowflake_warehouse.warehouse.name
   default_role      = snowflake_role.role.name
   default_namespace = "${snowflake_database.db.name}.${snowflake_schema.schema.name}"
   default_secondary_roles = ["ALL"]
-  password = "secret"
+  password = ""
 }
 
 # ROLE GRANTED TO USER
