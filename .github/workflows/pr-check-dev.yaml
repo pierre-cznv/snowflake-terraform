@@ -121,7 +121,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const output = `#### AWS Account: sumup-data-dev (395533948345)
+            const output = `#### AWS Sandbox Account: 685579070140
             
             #### 1. Format and Style 🖌: \`${{ steps.terraform-fmt.outcome }}\`
             #### 2. Initialization ⚙️: \`${{ steps.terraform-init.outcome }}\`
