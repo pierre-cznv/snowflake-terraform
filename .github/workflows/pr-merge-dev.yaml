@@ -54,7 +54,7 @@ jobs:
         str: ${{ steps.get-unique-folders.outputs.changed_folders }}
         separator: space
 
-  run-terraform:
+  run-terragrunt:
     needs: changed-directories
     strategy:
       fail-fast: false
@@ -94,12 +94,12 @@ jobs:
           cd live/dev
         continue-on-error: false
 
-      - id: terraform-init
-        name: Terraform Init
+      - id: terragrunt-init
+        name: Terragrunt Init
         run: terragrunt init --terragrunt-non-interactive
         continue-on-error: false
 
-      - id: terraform-apply
-        name: Terraform Apply
+      - id: terragrunt-apply
+        name: Terragrunt Apply
         run: terragrunt run-all apply -no-color --terragrunt-non-interactive
         continue-on-error: false
