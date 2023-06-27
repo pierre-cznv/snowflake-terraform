@@ -12,13 +12,11 @@ variable "env" {
 variable "domain" {
   description = "The name of the team/domain, e.g. 'finance', 'marketing'"
   type        = string
-  default     = "domain_not_set"
 }
 
 variable "sf_account" {
   type        = string
   description = "Snowflake account ID + region"
-  default = "ig29163.eu-west-1"
 }
 
 variable "sf_username" {
