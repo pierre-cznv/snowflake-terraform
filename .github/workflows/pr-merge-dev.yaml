@@ -95,7 +95,7 @@ jobs:
 
       - id: terragrunt-init
         name: Terragrunt Init
-        run: terragrunt init --terragrunt-non-interactive
+        run: terragrunt run-all init --terragrunt-non-interactive
         continue-on-error: false
 
       - id: terragrunt-apply
