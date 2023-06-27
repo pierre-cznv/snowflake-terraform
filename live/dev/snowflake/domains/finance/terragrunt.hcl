@@ -13,7 +13,7 @@ locals {
 
 inputs = {
   env    = upper(local.env)
-  domain = lower(local.folder_name)
+  domain = upper(local.folder_name)
 
   sf_account  = "ozyswfl-${local.env}"
   sf_username = "pierre"
