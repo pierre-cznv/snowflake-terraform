@@ -47,7 +47,7 @@ jobs:
         str: ${{ steps.get-unique-folders.outputs.changed_folders }}
         separator: space
 
-  run-terraform:
+  run-terragrunt:
     needs: changed-directories
     strategy:
       fail-fast: false
@@ -97,17 +97,17 @@ jobs:
         run: terragrunt hclfmt --terragrunt-check --terragrunt-non-interactive
         continue-on-error: true
 
-      - id: terraform-init
+      - id: terragrunt-init
         name: Terraform Init
         run: terragrunt run-all init --terragrunt-non-interactive
         continue-on-error: true
 
-      - id: terraform-validate
+      - id: terragrunt-validate
         name: Terraform Validate
         run: terragrunt run-all validate -no-color --terragrunt-non-interactive
         continue-on-error: true
 
-      - id: terraform-plan
+      - id: terragrunt-plan
         name: Terraform Plan
         run: terragrunt run-all plan -no-color -out=tfplan --terragrunt-non-interactive
         continue-on-error: true
@@ -121,10 +121,10 @@ jobs:
           script: |
             const output = `#### AWS dev account
             
-            #### 1. Format and Style 🖌: \`${{ steps.terraform-fmt.outcome }}\`
-            #### 2. Initialization ⚙️: \`${{ steps.terraform-init.outcome }}\`
-            #### 3. Validation 🤖: \`${{ steps.terraform-validate.outcome }}\`
-            #### 4. Terraform Plan 📖: \`${{ steps.terraform-plan.outcome }}\`
+            #### 1. Format and Style 🖌: \`${{ steps.terragrunt-fmt.outcome }}\`
+            #### 2. Initialization ⚙️: \`${{ steps.terragrunt-init.outcome }}\`
+            #### 3. Validation 🤖: \`${{ steps.terragrunt-validate.outcome }}\`
+            #### 4. Terraform Plan 📖: \`${{ steps.terragrunt-plan.outcome }}\`
 
             *Pushed by: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
 
@@ -138,15 +138,15 @@ jobs:
       - id: status-check
         name: Status Check
         if: |
-          steps.terraform-fmt.outcome == 'failure' ||
-          steps.terraform-validate.outcome == 'failure' ||
-          steps.terraform-plan.outcome == 'failure'
+          steps.terragrunt-fmt.outcome == 'failure' ||
+          steps.terragrunt-validate.outcome == 'failure' ||
+          steps.terragrunt-plan.outcome == 'failure'
         run: exit 1
 
   workflow-check:
     needs:
       - changed-directories
-      - run-terraform
+      - run-terragrunt
     runs-on: ubuntu-latest
     steps:
       - id: check-success
@@ -154,4 +154,4 @@ jobs:
         uses: re-actors/alls-green@v1.1.0
         with:
           jobs: ${{ toJSON(needs) }}
-          allowed-skips: changed-directories, run-terraform
+          allowed-skips: changed-directories, run-terragrunt
