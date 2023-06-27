@@ -9,7 +9,7 @@ terraform {
   }
 }
 
-# SYSADMIN CONNECTION
+# ACCOUNTADMIN CONNECTION
 
 provider "snowflake" {
   account  = var.sf_account # the Snowflake account identifier

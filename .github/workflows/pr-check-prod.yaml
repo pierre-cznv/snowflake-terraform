@@ -3,7 +3,7 @@ name: pr-check-prod
 on:
   pull_request:
     paths:
-      - "prod/**"
+      - "_live/prod/**"
 
 permissions:
   contents: read
@@ -26,7 +26,7 @@ jobs:
         list-files: shell
         filters: |
           changed:
-            - 'prod/**'
+            - 'live/prod/**'
 
     - id: get-unique-folders
       name: Get Changed Folders
@@ -110,7 +110,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const output = `#### AWS Account: sumup-data-prod (433758312444)
+            const output = `#### AWS Sandbox Account: 685579070140
             
             #### Terraform Format and Style 🖌\`${{ steps.terraform-fmt.outcome }}\`
             #### Terraform Initialization ⚙️\`${{ steps.terraform-init.outcome }}\`

@@ -5,15 +5,14 @@ on:
     branches:
       - main
     paths:
-      - "dev/**"
+      - "live/dev/**"
 
 permissions:
   contents: read
   pull-requests: write
 
 env:
-  TF_VAR_sf_username: ${{ secrets.tf_var_sf_username }}
-  TF_VAR_sf_password: ${{ secrets.tf_var_sf_password }}
+  SF_PASSWORD_DEV: ${{ secrets.sf_password_dev }}
 
 jobs:
   changed-directories:
@@ -33,7 +32,7 @@ jobs:
         list-files: shell
         filters: |
           changed:
-            - 'dev/**'
+            - 'live/dev/**'
 
     - id: get-unique-folders
       name: Get Changed Folders
@@ -55,7 +54,7 @@ jobs:
         str: ${{ steps.get-unique-folders.outputs.changed_folders }}
         separator: space
 
-  run-terraform:
+  run-terragrunt:
     needs: changed-directories
     strategy:
       fail-fast: false
@@ -65,7 +64,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ${{ matrix.folders }}
+        working-directory: "/home/runner/work/snowflake-terraform/snowflake-terraform/live/dev" # ${{ matrix.folders }}
     steps:
       - id: checkout-repo
         name: Checkout Repository
@@ -76,21 +75,30 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v1
         with:
           aws-region: eu-west-1
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_DEV }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_DEV }}
           #role-to-assume: arn:aws:iam::395533948345:role/OrganizationAccountAccessRole
           #role-duration-seconds: 3600
 
       - id: setup-terraform
         name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
-#
-      - id: terraform-init
-        name: Terraform Init
-        run: terraform init
+
+      - id: setup-terragrunt
+        name: Setup Terragrunt
+        run: |
+          sudo wget -q -O /bin/terragrunt "https://github.com/gruntwork-io/terragrunt/releases/download/v0.48.0/terragrunt_linux_amd64"
+          sudo chmod +x /bin/terragrunt
+          terragrunt -v
+          pwd
         continue-on-error: false
 
-      - id: terraform-apply
-        name: Terraform Apply
-        run: terraform apply -no-color -auto-approve
+      - id: terragrunt-init
+        name: Terragrunt Init
+        run: terragrunt init --terragrunt-non-interactive
+        continue-on-error: false
+
+      - id: terragrunt-apply
+        name: Terragrunt Apply
+        run: terragrunt run-all apply -no-color --terragrunt-non-interactive
         continue-on-error: false

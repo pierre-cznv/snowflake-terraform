@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - "prod/**"
+      - "_live/prod/**"
 
 permissions:
   contents: read
@@ -33,7 +33,7 @@ jobs:
         list-files: shell
         filters: |
           changed:
-            - 'prod/**'
+            - 'live/prod/**'
 
     - id: get-unique-folders
       name: Get Changed Folders

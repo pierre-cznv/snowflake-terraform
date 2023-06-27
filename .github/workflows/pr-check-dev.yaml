@@ -3,15 +3,14 @@ name: pr-check-dev
 on:
   pull_request:
     paths:
-      - "dev/**"
+      - "live/dev/**"
 
 permissions:
   contents: read
   pull-requests: write
 
 env:
-  TF_VAR_sf_username: ${{ secrets.tf_var_sf_username }}
-  TF_VAR_sf_password: ${{ secrets.tf_var_sf_password }}
+  SF_PASSWORD_DEV: ${{ secrets.sf_password_dev }}
 
 jobs:
   changed-directories:
@@ -26,7 +25,7 @@ jobs:
         list-files: shell
         filters: |
           changed:
-            - 'dev/**'
+            - 'live/dev/**'
 
     - id: get-unique-folders
       name: Get Changed Folders
@@ -48,7 +47,7 @@ jobs:
         str: ${{ steps.get-unique-folders.outputs.changed_folders }}
         separator: space
 
-  run-terraform:
+  run-terragrunt:
     needs: changed-directories
     strategy:
       fail-fast: false
@@ -58,7 +57,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ${{ matrix.folders }}
+        working-directory: "/home/runner/work/snowflake-terraform/snowflake-terraform/live/dev" # ${{ matrix.folders }}
     steps:
       - id: checkout-repo
         name: Checkout Repository
@@ -75,43 +74,42 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v1
         with:
           aws-region: eu-west-1
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          role-duration-seconds: 3600
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_DEV }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_DEV }}
+          #role-to-assume: arn:aws:iam::395533948345:role/OrganizationAccountAccessRole
+          #role-duration-seconds: 3600
 
       - id: setup-terraform
         name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
 
-      - id: setup-terraform-compliance
-        name: Setup terraform-compliance
-        uses: terraform-compliance/github_action@0.3.0
-
-      - id: terraform-fmt
-        name: Terraform Format
-        run: terraform fmt -check
-        continue-on-error: true
-
-      - id: terraform-init
-        name: Terraform Init
-        run: terraform init
-        continue-on-error: true
-
-      - id: terraform-validate
-        name: Terraform Validate
-        run: terraform validate -no-color
-        continue-on-error: true
-
-      - id: terraform-plan
-        name: Terraform Plan
-        run: terraform plan -no-color -lock=false -out=${{ github.workspace }}/${{ matrix.folders }}/tfplan
-        continue-on-error: true
-
-      - id: terraform-compliance-check
-        name: Terraform Compliance Checks
+      - id: setup-terragrunt
+        name: Setup Terragrunt
         run: |
-          # terraform-compliance -p ${{ github.workspace }}/${{ matrix.folders }}/tfplan -f ${{ github.workspace }}/terraform-compliance --silent
-          echo 123
+          sudo wget -q -O /bin/terragrunt "https://github.com/gruntwork-io/terragrunt/releases/download/v0.48.0/terragrunt_linux_amd64"
+          sudo chmod +x /bin/terragrunt
+          terragrunt -v
+          pwd
+        continue-on-error: false
+
+      - id: terragrunt-fmt
+        name: Terragrunt Format
+        run: terragrunt hclfmt --terragrunt-check --terragrunt-non-interactive
+        continue-on-error: true
+
+      - id: terragrunt-init
+        name: Terragrunt Init
+        run: terragrunt run-all init --terragrunt-non-interactive
+        continue-on-error: true
+
+      - id: terragrunt-validate
+        name: Terragrunt Validate
+        run: terragrunt run-all validate -no-color --terragrunt-non-interactive
+        continue-on-error: true
+
+      - id: terragrunt-plan
+        name: Terragrunt Plan
+        run: terragrunt run-all plan -no-color -out=tfplan --terragrunt-non-interactive
         continue-on-error: true
 
       - id: update-pr-dev
@@ -121,13 +119,12 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const output = `#### AWS Account: sumup-data-dev (395533948345)
+            const output = `#### AWS dev account
             
-            #### 1. Format and Style 🖌: \`${{ steps.terraform-fmt.outcome }}\`
-            #### 2. Initialization ⚙️: \`${{ steps.terraform-init.outcome }}\`
-            #### 3. Validation 🤖: \`${{ steps.terraform-validate.outcome }}\`
-            #### 4. Terraform Plan 📖: \`${{ steps.terraform-plan.outcome }}\`
-            #### 5. Compliance Checks 🛡️: \`${{ steps.terraform-compliance-check.outcome }}\`
+            #### 1. Format and Style 🖌: \`${{ steps.terragrunt-fmt.outcome }}\`
+            #### 2. Initialization ⚙️: \`${{ steps.terragrunt-init.outcome }}\`
+            #### 3. Validation 🤖: \`${{ steps.terragrunt-validate.outcome }}\`
+            #### 4. Terragrunt Plan 📖: \`${{ steps.terragrunt-plan.outcome }}\`
 
             *Pushed by: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
 
@@ -141,16 +138,15 @@ jobs:
       - id: status-check
         name: Status Check
         if: |
-          steps.terraform-fmt.outcome == 'failure' ||
-          steps.terraform-validate.outcome == 'failure' ||
-          steps.terraform-plan.outcome == 'failure' ||
-          steps.terraform-compliance-check.outcome == 'failure'
+          steps.terragrunt-fmt.outcome == 'failure' ||
+          steps.terragrunt-validate.outcome == 'failure' ||
+          steps.terragrunt-plan.outcome == 'failure'
         run: exit 1
 
   workflow-check:
     needs:
       - changed-directories
-      - run-terraform
+      - run-terragrunt
     runs-on: ubuntu-latest
     steps:
       - id: check-success
@@ -158,5 +154,4 @@ jobs:
         uses: re-actors/alls-green@v1.1.0
         with:
           jobs: ${{ toJSON(needs) }}
-          allowed-skips: changed-directories, run-terraform
-
+          allowed-skips: changed-directories, run-terragrunt
