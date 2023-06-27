@@ -57,7 +57,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ${{ matrix.folders }}
+        working-directory: "/home/runner/work/snowflake-terraform/snowflake-terraform/live/dev" # ${{ matrix.folders }}
     steps:
       - id: checkout-repo
         name: Checkout Repository
@@ -90,17 +90,11 @@ jobs:
           sudo chmod +x /bin/terragrunt
           terragrunt -v
           pwd
-          cd live/dev
         continue-on-error: false
-
-      - id: terraform-fmt
-        name: Terraform Format
-        run: terraform fmt -check -recursive
-        continue-on-error: true
 
       - id: terragrunt-fmt
         name: Terragrunt Format
-        run: terragrunt hclfmt --terragrunt-check
+        run: terragrunt hclfmt --terragrunt-check --terragrunt-non-interactive
         continue-on-error: true
 
       - id: terraform-init
